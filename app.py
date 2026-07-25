@@ -1,5 +1,6 @@
 import streamlit as st
 
+import agent
 import audio_source
 import ratings
 import retrieval
@@ -447,6 +448,78 @@ def lucky_section(playlists):
         st.session_state.history = history
 
 
+def smart_recommend_section():
+    """Render the Smart Recommend controls and result.
+
+    Distinct from Lucky Pick: this triggers agent.recommend()'s rule-based
+    plan/act/check/critique loop (never an LLM -- see agent.py's module
+    docstring and docs/adr/0001-no-llm-local-only-agent.md) to build a
+    reasoned Queue of several songs, rather than one random pick. The
+    optional vibe text here narrows the candidate pool via retrieval.py
+    before planning, same as the standalone VibeQuery section above but
+    feeding straight into the agent instead of just displaying candidates.
+    """
+    st.header("Smart Recommend")
+    st.caption(
+        "Runs the RecommendationAgent's plan/act/check/critique loop to "
+        "build a reasoned Queue -- a deterministic rule-based agent, not an "
+        "LLM. Contrast this with Lucky Pick's single random choice above."
+    )
+
+    vibe_text = st.text_input(
+        "Optional vibe to narrow candidates (leave blank to consider the full library)",
+        key="smart_recommend_vibe_text",
+    )
+
+    if st.button("Smart Recommend"):
+        songs = st.session_state.songs
+        profile = st.session_state.profile
+        history = st.session_state.history
+
+        queue, trace = agent.recommend(
+            songs,
+            profile,
+            history,
+            ratings.all_ratings(),
+            vibe_query=vibe_text or None,
+        )
+
+        if not queue:
+            st.warning("The agent could not assemble a Queue from the current library.")
+            return
+
+        if trace.exhausted_retries:
+            st.warning(
+                f"Retries exhausted after {len(trace.iterations)} iterations without "
+                f"clearing the Score threshold ({trace.threshold:.2f}). Showing the "
+                f"best Queue found (Score {trace.final_score:.3f})."
+            )
+        else:
+            st.success(
+                f"Queue ready -- Score {trace.final_score:.3f} "
+                f"(threshold {trace.threshold:.2f}) in {len(trace.iterations)} iteration(s)."
+            )
+
+        last_iteration = trace.iterations[-1]
+        breakdown = ", ".join(f"{k} {v:.2f}" for k, v in last_iteration.score_breakdown.items())
+        st.write(
+            f"Strategy: **{last_iteration.strategy}** "
+            f"(energy variance / artist-repeat / rating-alignment: {breakdown})"
+        )
+
+        for song in queue:
+            tags = ", ".join(song.get("tags", []))
+            st.write(
+                f"- **{song['title']}** by {song['artist']} "
+                f"(genre {song.get('genre', '?')}, energy {song.get('energy', '?')}, "
+                f"mood {song.get('mood', '?')}) [{tags}]"
+            )
+
+        history = st.session_state.history
+        history.extend(queue)
+        st.session_state.history = history
+
+
 def vibe_query_section():
     """Render the VibeQuery free-text retrieval controls and results.
 
@@ -566,6 +639,8 @@ def main():
     playlist_tabs(merged_playlists)
     st.divider()
     lucky_section(merged_playlists)
+    st.divider()
+    smart_recommend_section()
     st.divider()
     vibe_query_section()
     st.divider()
