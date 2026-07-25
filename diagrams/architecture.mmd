@@ -1,0 +1,105 @@
+%% Architecture diagram for the Playlist Chaos -> Agentic Music System extension.
+%% Rendered directly from source (no PNG needed) -- see README.md's
+%% "Architecture Overview" section for a plain-language walkthrough of this
+%% same structure.
+
+flowchart TD
+    User(("User"))
+
+    subgraph UI["app.py -- Streamlit UI layer"]
+        Sidebar["Profile + Add Song sidebar"]
+        Playlists["Playlist tabs (Hype / Chill / Mixed) + rating widget"]
+        LuckyBtn["Lucky Pick button"]
+        SmartBtn["Smart Recommend button"]
+        VibeBox["VibeQuery text input"]
+        TranscribeBtn["Transcribe button"]
+    end
+
+    User --> Sidebar
+    User --> Playlists
+    User --> LuckyBtn
+    User --> SmartBtn
+    User --> VibeBox
+    User --> TranscribeBtn
+
+    subgraph Logic["playlist_logic.py"]
+        Classify["normalize_song / classify_song / build_playlists"]
+        Lucky["lucky_pick (random baseline, unchanged)"]
+    end
+
+    Sidebar --> Classify
+    Classify --> Playlists
+    LuckyBtn --> Lucky
+    Lucky --> Playlists
+
+    subgraph Audio["audio_source.py"]
+        Resolve["resolve(song): local or archive_url + format guard"]
+    end
+    Playlists --> Resolve
+    Resolve --> Playlists
+
+    subgraph Rate["ratings.py"]
+        RateSong["rate_song / get_rating / clear_rating"]
+    end
+    Playlists -- "star widget: human feedback" --> RateSong
+
+    subgraph Retrieval["retrieval.py -- RAG"]
+        Index["build_index: TF-IDF over title/artist/genre/tags"]
+        QueryFn["query(vibe text): ranked candidates"]
+    end
+    VibeBox --> Index
+    Index --> QueryFn
+    QueryFn --> VibeBox
+
+    subgraph Predictor["rating_predictor.py -- fine-tuned regressor"]
+        Synth["generate_synthetic_dataset (bootstrap)"]
+        TrainFn["train(songs, ratings)"]
+        PredictFn["predict(song)"]
+    end
+    Synth --> TrainFn
+    RateSong -. "real ratings, 20x sample weight" .-> TrainFn
+    TrainFn --> PredictFn
+
+    subgraph Agent["agent.py -- RecommendationAgent (plan/act/check/critique)"]
+        Plan["plan: strategy from Profile/History/Ratings"]
+        Act["act: assemble Queue via RatingPredictor + rules"]
+        Check["check: Score = variance + artist + rating"]
+        Critique{"Score at/above threshold?"}
+    end
+
+    SmartBtn --> Plan
+    QueryFn -. "narrowed pool when VibeQuery given" .-> Act
+    Plan --> Act
+    PredictFn --> Act
+    Act --> Check
+    Check --> Critique
+    Critique -- "no: retry, bounded by MAX_ITERATIONS" --> Plan
+    Critique -- "yes" --> Trace
+
+    subgraph TranscribeMod["transcription.py"]
+        Whisper["faster-whisper tiny model (isolated, never raises)"]
+    end
+    TranscribeBtn --> Whisper
+    Resolve -. "audio reference" .-> Whisper
+    Whisper --> TranscribeBtn
+
+    subgraph TraceOut["ReasoningTrace"]
+        Trace["ai_interactions.md: plan / act / check / critique log"]
+    end
+    Trace --> SmartBtn
+    Trace -- "human reads and checks the AI's reasoning" --> User
+
+    subgraph Storage["storage.py -- JSON persistence"]
+        LoadSave["load_json / save_json"]
+        Files[("data/library.json, ratings.json, history.json")]
+    end
+    Sidebar --> LoadSave
+    RateSong --> LoadSave
+    LoadSave --> Files
+
+    subgraph Hist["History"]
+        HistState["session_state.history"]
+    end
+    SmartBtn --> HistState
+    LuckyBtn --> HistState
+    HistState --> Playlists
