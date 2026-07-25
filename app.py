@@ -1,6 +1,7 @@
 import streamlit as st
 
 import audio_source
+import ratings
 import storage
 from playlist_logic import (
     DEFAULT_PROFILE,
@@ -20,6 +21,24 @@ LOCAL_SAMPLE_FILES = [
     "data/samples/tone_b.wav",
     "data/samples/tone_c.wav",
 ]
+
+# Star widget options. Index 0 ("Unrated") is a distinct state, never a
+# numeric 0 -- absence of a rating must never be confused with "rated 0".
+STAR_OPTIONS = ["Unrated", "★", "★★", "★★★", "★★★★", "★★★★★"]
+
+
+def _stars_to_option(stars):
+    """Map a persisted rating (int 1-5 or None) to a STAR_OPTIONS label."""
+    if stars is None:
+        return STAR_OPTIONS[0]
+    return STAR_OPTIONS[stars]
+
+
+def _option_to_stars(option):
+    """Map a STAR_OPTIONS label back to a rating (int 1-5 or None)."""
+    if option == STAR_OPTIONS[0]:
+        return None
+    return STAR_OPTIONS.index(option)
 
 
 def init_state():
@@ -308,6 +327,36 @@ def render_playlist(label, songs):
     query = st.text_input(f"Search {label} playlist by artist", key=f"search_{label}")
     filtered = search_songs(songs, query, field="artist")
 
+    col1, col2 = st.columns(2)
+    with col1:
+        sort_choice = st.selectbox(
+            "Sort by",
+            options=["Default", "Rating: high to low"],
+            key=f"sort_{label}",
+        )
+    with col2:
+        filter_choice = st.selectbox(
+            "Filter",
+            options=["All", "Rated only", "Unrated only"],
+            key=f"filter_{label}",
+        )
+
+    if filter_choice == "Rated only":
+        filtered = [s for s in filtered if ratings.get_rating(s) is not None]
+    elif filter_choice == "Unrated only":
+        filtered = [s for s in filtered if ratings.get_rating(s) is None]
+
+    if sort_choice == "Rating: high to low":
+        # Unrated songs (None) always sort after every rated song, regardless
+        # of direction -- "unrated" is a distinct absence, not a 0.
+        filtered = sorted(
+            filtered,
+            key=lambda s: (
+                ratings.get_rating(s) is None,
+                -(ratings.get_rating(s) or 0),
+            ),
+        )
+
     if not filtered:
         st.write("No matching songs.")
         return
@@ -326,6 +375,21 @@ def render_playlist(label, songs):
             st.audio(result.reference)
         else:
             st.caption(f"Playback unavailable: {result.reason}")
+
+        current_rating = ratings.get_rating(song)
+        widget_key = f"rating_{label}_{ratings.song_key(song)}"
+        chosen = st.select_slider(
+            "Your rating",
+            options=STAR_OPTIONS,
+            value=_stars_to_option(current_rating),
+            key=widget_key,
+        )
+        chosen_stars = _option_to_stars(chosen)
+        if chosen_stars != current_rating:
+            if chosen_stars is None:
+                ratings.clear_rating(song)
+            else:
+                ratings.rate_song(song, chosen_stars)
 
 
 def lucky_section(playlists):
