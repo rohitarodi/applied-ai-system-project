@@ -1,0 +1,17 @@
+# Runtime-mutated JSON state (ratings, history, etc. added in later tickets).
+# data/library.json is the tracked, shipped seed library and is intentionally
+# NOT ignored here -- it doubles as the runtime file (see storage.py docstring
+# for that design choice), but future per-user state files should follow this
+# pattern instead of being tracked.
+data/*.json
+!data/library.json
+
+# Keep bundled sample audio and its provenance notes tracked.
+!data/samples/
+!data/samples/**
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/

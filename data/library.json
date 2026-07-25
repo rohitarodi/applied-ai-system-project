@@ -1,0 +1,307 @@
+[
+  {
+    "title": "Thunderstruck",
+    "artist": "AC/DC",
+    "genre": "rock",
+    "energy": 9,
+    "tags": [
+      "classic",
+      "guitar"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_a.wav"
+    }
+  },
+  {
+    "title": "Lo-fi Rain",
+    "artist": "DJ Calm",
+    "genre": "lofi",
+    "energy": 2,
+    "tags": [
+      "study"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_b.wav"
+    }
+  },
+  {
+    "title": "Night Drive",
+    "artist": "Neon Echo",
+    "genre": "electronic",
+    "energy": 6,
+    "tags": [
+      "synth"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_c.wav"
+    }
+  },
+  {
+    "title": "Soft Piano",
+    "artist": "Sleep Sound",
+    "genre": "ambient",
+    "energy": 1,
+    "tags": [
+      "sleep"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_a.wav"
+    }
+  },
+  {
+    "title": "Bohemian Rhapsody",
+    "artist": "Queen",
+    "genre": "rock",
+    "energy": 8,
+    "tags": [
+      "classic",
+      "opera"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_b.wav"
+    }
+  },
+  {
+    "title": "Blinding Lights",
+    "artist": "The Weeknd",
+    "genre": "pop",
+    "energy": 8,
+    "tags": [
+      "synth",
+      "dance"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_c.wav"
+    }
+  },
+  {
+    "title": "Take Five",
+    "artist": "Dave Brubeck",
+    "genre": "jazz",
+    "energy": 4,
+    "tags": [
+      "classic",
+      "instrumental"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_a.wav"
+    }
+  },
+  {
+    "title": "Strobe",
+    "artist": "Deadmau5",
+    "genre": "electronic",
+    "energy": 7,
+    "tags": [
+      "progressive",
+      "long"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_b.wav"
+    }
+  },
+  {
+    "title": "Weightless",
+    "artist": "Marconi Union",
+    "genre": "ambient",
+    "energy": 1,
+    "tags": [
+      "relax",
+      "sleep"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_c.wav"
+    }
+  },
+  {
+    "title": "Smells Like Teen Spirit",
+    "artist": "Nirvana",
+    "genre": "rock",
+    "energy": 9,
+    "tags": [
+      "grunge",
+      "90s"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_a.wav"
+    }
+  },
+  {
+    "title": "Levitating",
+    "artist": "Dua Lipa",
+    "genre": "pop",
+    "energy": 8,
+    "tags": [
+      "dance",
+      "party"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_b.wav"
+    }
+  },
+  {
+    "title": "So What",
+    "artist": "Miles Davis",
+    "genre": "jazz",
+    "energy": 3,
+    "tags": [
+      "trumpet",
+      "cool"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_c.wav"
+    }
+  },
+  {
+    "title": "Midnight City",
+    "artist": "M83",
+    "genre": "electronic",
+    "energy": 7,
+    "tags": [
+      "indie",
+      "dream"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_a.wav"
+    }
+  },
+  {
+    "title": "Gymnopedie No.1",
+    "artist": "Erik Satie",
+    "genre": "ambient",
+    "energy": 1,
+    "tags": [
+      "piano",
+      "calm"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_b.wav"
+    }
+  },
+  {
+    "title": "Sweet Child O' Mine",
+    "artist": "Guns N' Roses",
+    "genre": "rock",
+    "energy": 8,
+    "tags": [
+      "guitar",
+      "80s"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_c.wav"
+    }
+  },
+  {
+    "title": "Bad Guy",
+    "artist": "Billie Eilish",
+    "genre": "pop",
+    "energy": 6,
+    "tags": [
+      "bass",
+      "dark"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_a.wav"
+    }
+  },
+  {
+    "title": "Fly Me to the Moon",
+    "artist": "Frank Sinatra",
+    "genre": "jazz",
+    "energy": 5,
+    "tags": [
+      "vocal",
+      "swing"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_b.wav"
+    }
+  },
+  {
+    "title": "Sandstorm",
+    "artist": "Darude",
+    "genre": "electronic",
+    "energy": 10,
+    "tags": [
+      "trance",
+      "meme"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_c.wav"
+    }
+  },
+  {
+    "title": "Clair de Lune",
+    "artist": "Claude Debussy",
+    "genre": "ambient",
+    "energy": 2,
+    "tags": [
+      "piano",
+      "classical"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_a.wav"
+    }
+  },
+  {
+    "title": "Hotel California",
+    "artist": "Eagles",
+    "genre": "rock",
+    "energy": 6,
+    "tags": [
+      "classic",
+      "guitar"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_b.wav"
+    }
+  },
+  {
+    "title": "Uptown Funk",
+    "artist": "Mark Ronson ft. Bruno Mars",
+    "genre": "pop",
+    "energy": 9,
+    "tags": [
+      "funk",
+      "dance"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_c.wav"
+    }
+  },
+  {
+    "title": "Feeling Good",
+    "artist": "Nina Simone",
+    "genre": "jazz",
+    "energy": 6,
+    "tags": [
+      "soul",
+      "vocal"
+    ],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_a.wav"
+    }
+  }
+]
