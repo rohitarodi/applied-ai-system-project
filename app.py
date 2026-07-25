@@ -2,11 +2,13 @@ import streamlit as st
 
 import audio_source
 import ratings
+import retrieval
 import storage
 from playlist_logic import (
     DEFAULT_PROFILE,
     Song,
     build_playlists,
+    classify_song,
     compute_playlist_stats,
     history_summary,
     lucky_pick,
@@ -418,6 +420,47 @@ def lucky_section(playlists):
         st.session_state.history = history
 
 
+def vibe_query_section():
+    """Render the VibeQuery free-text retrieval controls and results.
+
+    This is retrieval only: a TF-IDF ranking over Song metadata (title,
+    artist, genre, tags). It bypasses Playlist mood filtering entirely --
+    candidates can span Hype, Chill, and Mixed -- and it does not pick or
+    recommend a song for the user, it just shows the ranked candidate list.
+    """
+    st.header("VibeQuery")
+    st.caption(
+        "Describe a mood or vibe in free text (e.g. \"rainy night drive\") "
+        "and see the ranked candidates. This does not filter by playlist "
+        "or recommend a single pick -- it just ranks the whole song pool."
+    )
+
+    vibe_text = st.text_input("Describe the vibe", key="vibe_query_text")
+
+    if st.button("Find the vibe"):
+        songs = st.session_state.songs
+        index = retrieval.build_index(songs)
+        results = retrieval.query(index, vibe_text, top_k=10)
+
+        if not results:
+            st.warning("No songs available to search.")
+            return
+
+        st.write(f"Top {len(results)} candidates for: \"{vibe_text}\"")
+        profile = st.session_state.profile
+        for song in results:
+            tags = ", ".join(song.get("tags", []))
+            genre = song.get("genre", "?")
+            # Mood is computed here purely for display context -- retrieval
+            # itself never used mood/Playlist bucket to filter or rank
+            # `results`, so candidates above may already span Hype/Chill/Mixed.
+            mood = classify_song(normalize_song(song), profile)
+            st.write(
+                f"- **{song.get('title', '?')}** by {song.get('artist', '?')} "
+                f"(genre {genre}, mood {mood}) [{tags}]"
+            )
+
+
 def stats_section(playlists):
     """Render statistics based on the playlists."""
     st.header("Playlist stats")
@@ -496,6 +539,8 @@ def main():
     playlist_tabs(merged_playlists)
     st.divider()
     lucky_section(merged_playlists)
+    st.divider()
+    vibe_query_section()
     st.divider()
     stats_section(merged_playlists)
     st.divider()
