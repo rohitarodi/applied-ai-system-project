@@ -15,6 +15,11 @@ from playlist_logic import (
 )
 
 LIBRARY_PATH = "data/library.json"
+LOCAL_SAMPLE_FILES = [
+    "data/samples/tone_a.wav",
+    "data/samples/tone_b.wav",
+    "data/samples/tone_c.wav",
+]
 
 
 def init_state():
@@ -244,6 +249,14 @@ def add_song_sidebar():
     energy = st.sidebar.slider("Energy", min_value=1, max_value=10, value=5)
     tags_text = st.sidebar.text_input("Tags (comma separated)")
 
+    audio_choice = st.sidebar.radio(
+        "Audio source",
+        options=["Local sample (round-robin)", "Archive URL"],
+    )
+    archive_url = ""
+    if audio_choice == "Archive URL":
+        archive_url = st.sidebar.text_input("Archive URL (direct link to .wav/.mp3/.ogg)")
+
     if st.sidebar.button("Add to playlist"):
         raw_tags = [t.strip() for t in tags_text.split(",")]
         tags = [t for t in raw_tags if t]
@@ -256,8 +269,16 @@ def add_song_sidebar():
             "tags": tags,
         }
         if title and artist:
+            # normalize_song() only recognizes title/artist/genre/energy/tags
+            # and rebuilds a fresh dict, so the audio field has to be attached
+            # after normalization rather than on the raw `song` above.
             normalized = normalize_song(song)
             all_songs = st.session_state.songs[:]
+            if audio_choice == "Archive URL":
+                normalized["audio"] = {"source_type": "archive_url", "url": archive_url}
+            else:
+                sample_path = LOCAL_SAMPLE_FILES[len(all_songs) % len(LOCAL_SAMPLE_FILES)]
+                normalized["audio"] = {"source_type": "local", "path": sample_path}
             all_songs.append(normalized)
             st.session_state.songs = all_songs
             storage.save_json(LIBRARY_PATH, all_songs)
