@@ -4,6 +4,7 @@ import audio_source
 import ratings
 import retrieval
 import storage
+import transcription
 from playlist_logic import (
     DEFAULT_PROFILE,
     Song,
@@ -378,6 +379,8 @@ def render_playlist(label, songs):
         else:
             st.caption(f"Playback unavailable: {result.reason}")
 
+        transcribe_song_widget(label, song, result.reference)
+
         current_rating = ratings.get_rating(song)
         widget_key = f"rating_{label}_{ratings.song_key(song)}"
         chosen = st.select_slider(
@@ -392,6 +395,30 @@ def render_playlist(label, songs):
                 ratings.clear_rating(song)
             else:
                 ratings.rate_song(song, chosen_stars)
+
+
+def transcribe_song_widget(label, song, audio_reference):
+    """Render a standalone 'Transcribe' button for one song.
+
+    Calls transcription.transcribe(), which is isolated by design: whether
+    faster-whisper is installed, fails to load, or errors during
+    transcription, this always returns a typed TranscriptionResult rather
+    than raising -- so a click here can never break the rest of the page.
+    Result is cached in session_state so it survives Streamlit reruns
+    triggered by other widgets (e.g. the rating slider below it).
+    """
+    widget_key = f"transcribe_{label}_{ratings.song_key(song)}"
+    result_key = f"{widget_key}_result"
+
+    if st.button("Transcribe", key=widget_key):
+        st.session_state[result_key] = transcription.transcribe(song, audio_reference)
+
+    stored_result = st.session_state.get(result_key)
+    if stored_result is not None:
+        if stored_result.available:
+            st.info(f"Lyrics/transcript: {stored_result.text}")
+        else:
+            st.caption(f"Transcription unavailable: {stored_result.reason}")
 
 
 def lucky_section(playlists):

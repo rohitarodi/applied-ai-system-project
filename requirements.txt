@@ -1,3 +1,10 @@
 streamlit>=1.36.0
 pytest>=8.0.0
 scikit-learn>=1.4.0
+
+# Optional: used by transcription.py's TranscriptionTool for local
+# karaoke/lyrics generation. Heavy dependency (downloads a whisper model on
+# first use) -- transcription.py lazily imports this and degrades
+# gracefully (typed "unavailable" result, no crash) if it is missing, fails
+# to install, or fails to load a model (e.g. no network access).
+faster-whisper>=1.0.0
