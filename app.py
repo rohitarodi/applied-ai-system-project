@@ -1,3 +1,5 @@
+import os
+
 import streamlit as st
 
 import agent
@@ -26,6 +28,7 @@ LOCAL_SAMPLE_FILES = [
     "data/samples/tone_b.wav",
     "data/samples/tone_c.wav",
 ]
+RECENTLY_ADDED_COUNT = 5
 
 # Star widget options. Index 0 ("Unrated") is a distinct state, never a
 # numeric 0 -- absence of a rating must never be confused with "rated 0".
@@ -44,6 +47,62 @@ def _option_to_stars(option):
     if option == STAR_OPTIONS[0]:
         return None
     return STAR_OPTIONS.index(option)
+
+
+def remove_song_from_library(songs, song):
+    """Return a new list with ``song`` removed, matched by ratings.song_key.
+
+    Pure helper -- no session_state/storage/rating side effects here, so the
+    Streamlit callback stays a thin wrapper around this (testable) logic.
+    """
+    target_key = ratings.song_key(song)
+    return [s for s in songs if ratings.song_key(s) != target_key]
+
+
+def most_recent_songs(songs, n=RECENTLY_ADDED_COUNT):
+    """Return the last ``n`` songs, most-recently-appended first.
+
+    Relies on list order as the insertion-order signal (append-only list),
+    per the ticket 1 design -- no separate timestamp field needed.
+    """
+    return list(reversed(songs[-n:]))
+
+
+def scan_local_folder(folder_path):
+    """Recursively scan ``folder_path`` for supported audio files.
+
+    Returns a list of normalized Song dicts (title derived from filename,
+    artist defaulted to "Local Import"). Returns an empty list if the path
+    doesn't exist or isn't a directory -- never raises on bad input, same
+    "never crash on user-supplied path" contract as audio_source.py.
+    """
+    if not folder_path or not os.path.isdir(folder_path):
+        return []
+
+    found = []
+    for root, dirs, files in os.walk(folder_path):
+        # Skip hidden/tooling dirs (.git, .venv, etc.) -- tidy, not required.
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        for filename in files:
+            _, ext = os.path.splitext(filename)
+            if ext.lower() not in audio_source.SUPPORTED_LOCAL_EXTENSIONS:
+                continue
+            stem = os.path.splitext(filename)[0]
+            title = stem.replace("_", " ").replace("-", " ").strip().title()
+            raw = {
+                "title": title,
+                "artist": "Local Import",
+                "genre": "other",
+                "energy": 5,
+                "tags": ["local-import"],
+            }
+            normalized = normalize_song(raw)
+            normalized["audio"] = {
+                "source_type": "local",
+                "path": os.path.join(root, filename),
+            }
+            found.append(normalized)
+    return found
 
 
 def init_state():
@@ -326,25 +385,67 @@ def import_cc0_sidebar():
     )
 
     if st.sidebar.button("Import curated public-domain library"):
-        existing_keys = {ratings.song_key(s) for s in st.session_state.songs}
+        with st.spinner("Importing curated tracks..."):
+            existing_keys = {ratings.song_key(s) for s in st.session_state.songs}
 
-        # Build the full new list in a local variable first, only assigning
-        # to session_state once it's complete -- a partially-built import
-        # can never leave session_state in a half-updated state.
-        all_songs = st.session_state.songs[:]
-        added = 0
-        skipped = 0
-        for candidate in cc0_library.normalized_cc0_tracks():
-            if ratings.song_key(candidate) in existing_keys:
-                skipped += 1
-                continue
-            all_songs.append(candidate)
-            existing_keys.add(ratings.song_key(candidate))
-            added += 1
+            # Build the full new list in a local variable first, only assigning
+            # to session_state once it's complete -- a partially-built import
+            # can never leave session_state in a half-updated state.
+            all_songs = st.session_state.songs[:]
+            added = 0
+            skipped = 0
+            for candidate in cc0_library.normalized_cc0_tracks():
+                if ratings.song_key(candidate) in existing_keys:
+                    skipped += 1
+                    continue
+                all_songs.append(candidate)
+                existing_keys.add(ratings.song_key(candidate))
+                added += 1
 
-        if added:
-            st.session_state.songs = all_songs
-            storage.save_json(LIBRARY_PATH, all_songs)
+            if added:
+                st.session_state.songs = all_songs
+                storage.save_json(LIBRARY_PATH, all_songs)
+        st.sidebar.success(f"Imported {added} new track(s), skipped {skipped} already in library.")
+
+
+def import_local_folder_sidebar():
+    """Render a sidebar section for bulk-importing local audio files.
+
+    Scans a user-supplied folder path (recursively) for supported audio
+    files via scan_local_folder(), dedupes against the existing library by
+    ratings.song_key (same idempotency pattern as import_cc0_sidebar), and
+    persists additions.
+    """
+    st.sidebar.header("Import local folder")
+    folder_path = st.sidebar.text_input("Folder path", key="local_folder_path")
+
+    if st.sidebar.button("Scan folder"):
+        if not folder_path or not os.path.isdir(folder_path):
+            st.sidebar.error(f"Folder not found: {folder_path}")
+            return
+
+        with st.spinner("Scanning folder..."):
+            candidates = scan_local_folder(folder_path)
+
+            if not candidates:
+                st.sidebar.warning("No supported audio files found in that folder.")
+                return
+
+            existing_keys = {ratings.song_key(s) for s in st.session_state.songs}
+            all_songs = st.session_state.songs[:]
+            added = 0
+            skipped = 0
+            for candidate in candidates:
+                if ratings.song_key(candidate) in existing_keys:
+                    skipped += 1
+                    continue
+                all_songs.append(candidate)
+                existing_keys.add(ratings.song_key(candidate))
+                added += 1
+
+            if added:
+                st.session_state.songs = all_songs
+                storage.save_json(LIBRARY_PATH, all_songs)
         st.sidebar.success(f"Imported {added} new track(s), skipped {skipped} already in library.")
 
 
@@ -407,36 +508,51 @@ def render_playlist(label, songs):
         return
 
     for song in filtered:
-        mood = song.get("mood", "?")
-        tags = ", ".join(song.get("tags", []))
-        st.write(
-            f"- **{song['title']}** by {song['artist']} "
-            f"(genre {song['genre']}, energy {song['energy']}, mood {mood}) "
-            f"[{tags}]"
-        )
+        render_song(label, song)
 
-        result = audio_source.resolve(song)
-        if result.playable:
-            st.audio(result.reference)
+
+def render_song(label, song):
+    """Render one song's display line, audio player, transcribe/rate/remove
+    controls. Shared by render_playlist() and recently_added_section() so
+    the audio-guard/rating markup isn't duplicated between them.
+    """
+    mood = song.get("mood", "?")
+    tags = ", ".join(song.get("tags", []))
+    st.write(
+        f"- **{song['title']}** by {song['artist']} "
+        f"(genre {song['genre']}, energy {song['energy']}, mood {mood}) "
+        f"[{tags}]"
+    )
+
+    result = audio_source.resolve(song)
+    if result.playable:
+        st.audio(result.reference)
+    else:
+        st.caption(f"Playback unavailable: {result.reason}")
+
+    transcribe_song_widget(label, song, result.reference)
+
+    current_rating = ratings.get_rating(song)
+    widget_key = f"rating_{label}_{ratings.song_key(song)}"
+    chosen = st.select_slider(
+        "Your rating",
+        options=STAR_OPTIONS,
+        value=_stars_to_option(current_rating),
+        key=widget_key,
+    )
+    chosen_stars = _option_to_stars(chosen)
+    if chosen_stars != current_rating:
+        if chosen_stars is None:
+            ratings.clear_rating(song)
         else:
-            st.caption(f"Playback unavailable: {result.reason}")
+            ratings.rate_song(song, chosen_stars)
 
-        transcribe_song_widget(label, song, result.reference)
-
-        current_rating = ratings.get_rating(song)
-        widget_key = f"rating_{label}_{ratings.song_key(song)}"
-        chosen = st.select_slider(
-            "Your rating",
-            options=STAR_OPTIONS,
-            value=_stars_to_option(current_rating),
-            key=widget_key,
-        )
-        chosen_stars = _option_to_stars(chosen)
-        if chosen_stars != current_rating:
-            if chosen_stars is None:
-                ratings.clear_rating(song)
-            else:
-                ratings.rate_song(song, chosen_stars)
+    remove_key = f"remove_{label}_{song['title']}_{song['artist']}"
+    if st.button("Remove", key=remove_key):
+        st.session_state.songs = remove_song_from_library(st.session_state.songs, song)
+        ratings.clear_rating(song)
+        storage.save_json(LIBRARY_PATH, st.session_state.songs)
+        st.rerun()
 
 
 def transcribe_song_widget(label, song, audio_reference):
@@ -461,6 +577,17 @@ def transcribe_song_widget(label, song, audio_reference):
             st.info(f"Lyrics/transcript: {stored_result.text}")
         else:
             st.caption(f"Transcription unavailable: {stored_result.reason}")
+
+
+def recently_added_section():
+    """Render the last RECENTLY_ADDED_COUNT songs, most-recent first."""
+    st.header("Recently added")
+    recent = most_recent_songs(st.session_state.songs, RECENTLY_ADDED_COUNT)
+    if not recent:
+        st.write("No songs in the library yet.")
+        return
+    for song in recent:
+        render_song("RecentlyAdded", song)
 
 
 def lucky_section(playlists):
@@ -670,6 +797,7 @@ def main():
     profile_sidebar()
     add_song_sidebar()
     import_cc0_sidebar()
+    import_local_folder_sidebar()
     clear_controls()
 
     profile = st.session_state.profile
@@ -679,6 +807,8 @@ def main():
     merged_playlists = merge_playlists(base_playlists, {})
 
     playlist_tabs(merged_playlists)
+    st.divider()
+    recently_added_section()
     st.divider()
     lucky_section(merged_playlists)
     st.divider()
