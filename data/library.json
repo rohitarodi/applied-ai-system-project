@@ -303,5 +303,27 @@
       "source_type": "local",
       "path": "data/samples/tone_a.wav"
     }
+  },
+  {
+    "title": "test",
+    "artist": "rohit",
+    "genre": "rock",
+    "energy": 5,
+    "tags": [],
+    "audio": {
+      "source_type": "local",
+      "path": "data/samples/tone_b.wav"
+    }
+  },
+  {
+    "title": "test2",
+    "artist": "rohit",
+    "genre": "rock",
+    "energy": 5,
+    "tags": [],
+    "audio": {
+      "source_type": "archive_url",
+      "url": "https://samplelib.com/lib/preview/mp3/sample-3s.mp3"
+    }
   }
 ]

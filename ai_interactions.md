@@ -185,3 +185,53 @@ generated several of the entries below.
   - critique -> threshold cleared, stopping
 - Final: Score 0.697 (threshold cleared)
 
+## Run at 2026-07-25 01:43:01 UTC
+
+- Profile: Default | History length: 2 | VibeQuery: (none)
+- Score threshold: 0.55
+- Iteration 1: plan -> strategy `explore_unrated`
+  - act -> Queue: Sandstorm, Thunderstruck, Smells Like Teen Spirit, Sweet Child O' Mine, Bohemian Rhapsody, Night Drive
+  - check -> Score 0.697 (variance=0.26, artist=1.00, rating=0.80)
+  - critique -> threshold cleared, stopping
+- Final: Score 0.697 (threshold cleared)
+
+## Run at 2026-07-25 01:50:55 UTC
+
+- Profile: Default | History length: 8 | VibeQuery: (none)
+- Score threshold: 0.55
+- Iteration 1: plan -> strategy `diversify_artist`
+  - act -> Queue: Thunderstruck, Smells Like Teen Spirit, Sandstorm, Sweet Child O' Mine, Bohemian Rhapsody, Hotel California
+  - check -> Score 0.733 (variance=0.26, artist=1.00, rating=0.89)
+  - critique -> threshold cleared, stopping
+- Final: Score 0.733 (threshold cleared)
+
+## Run at 2026-07-25 01:51:00 UTC
+
+- Profile: Default | History length: 14 | VibeQuery: (none)
+- Score threshold: 0.55
+- Iteration 1: plan -> strategy `diversify_artist`
+  - act -> Queue: Thunderstruck, Smells Like Teen Spirit, Sandstorm, Sweet Child O' Mine, Bohemian Rhapsody, Hotel California
+  - check -> Score 0.733 (variance=0.26, artist=1.00, rating=0.89)
+  - critique -> threshold cleared, stopping
+- Final: Score 0.733 (threshold cleared)
+
+## Run at 2026-07-25 01:51:01 UTC
+
+- Profile: Default | History length: 20 | VibeQuery: (none)
+- Score threshold: 0.55
+- Iteration 1: plan -> strategy `diversify_artist`
+  - act -> Queue: Thunderstruck, Smells Like Teen Spirit, Sandstorm, Sweet Child O' Mine, Bohemian Rhapsody, Hotel California
+  - check -> Score 0.733 (variance=0.26, artist=1.00, rating=0.89)
+  - critique -> threshold cleared, stopping
+- Final: Score 0.733 (threshold cleared)
+
+## Run at 2026-07-25 01:51:01 UTC
+
+- Profile: Default | History length: 26 | VibeQuery: (none)
+- Score threshold: 0.55
+- Iteration 1: plan -> strategy `diversify_artist`
+  - act -> Queue: Thunderstruck, Smells Like Teen Spirit, Sandstorm, Sweet Child O' Mine, Bohemian Rhapsody, Hotel California
+  - check -> Score 0.733 (variance=0.26, artist=1.00, rating=0.89)
+  - critique -> threshold cleared, stopping
+- Final: Score 0.733 (threshold cleared)
+
