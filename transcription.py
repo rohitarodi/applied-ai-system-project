@@ -16,8 +16,25 @@ Standalone, user-invoked in this ticket. Agent tool-call integration
 this module does not import or wire into any agent flow.
 """
 
+import os
+import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Callable, Optional
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
+
+# Wikimedia (and some other hosts) reject the default urllib User-Agent with
+# a 403 -- identify the request honestly instead of spoofing a browser.
+_DOWNLOAD_USER_AGENT = "PlaylistChaos-TranscriptionTool/1.0"
+
+
+def urlretrieve(url: str, dest_path: str, timeout: int = 20) -> None:
+    """Download `url` to `dest_path`. Thin wrapper so tests can monkeypatch
+    this single call point without needing real network access."""
+    request = Request(url, headers={"User-Agent": _DOWNLOAD_USER_AGENT})
+    with urlopen(request, timeout=timeout) as response, open(dest_path, "wb") as f:
+        f.write(response.read())
 
 
 @dataclass
@@ -25,6 +42,33 @@ class TranscriptionResult:
     available: bool
     text: Optional[str] = None
     reason: Optional[str] = None
+
+
+@contextmanager
+def _local_path_for(audio_reference: str):
+    """Yield a local filesystem path for `audio_reference`.
+
+    faster-whisper's WhisperModel.transcribe() only accepts a local file
+    path, not a URL. If `audio_reference` is already local (the common case
+    for "local" source_type songs), it's yielded unchanged -- no download,
+    no temp file. If it's an http(s) URL (archive_url songs), it's
+    downloaded to a temp file first (extension inferred from the URL so
+    faster-whisper's format sniffing works), which is always cleaned up on
+    the way out, success or failure.
+    """
+    if not audio_reference.startswith(("http://", "https://")):
+        yield audio_reference
+        return
+
+    _, ext = os.path.splitext(urlsplit(audio_reference).path)
+    fd, tmp_path = tempfile.mkstemp(suffix=ext or ".audio")
+    os.close(fd)
+    try:
+        urlretrieve(audio_reference, tmp_path)  # noqa: S310 -- known http(s) archive URL
+        yield tmp_path
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 def _load_and_transcribe(audio_reference: str) -> str:
@@ -38,12 +82,13 @@ def _load_and_transcribe(audio_reference: str) -> str:
     """
     from faster_whisper import WhisperModel  # heavy optional dependency
 
-    # "tiny" is the smallest/fastest model size -- appropriate for a local,
-    # best-effort karaoke/lyrics tool rather than a production transcription
-    # service.
-    model = WhisperModel("tiny")
-    segments, _info = model.transcribe(audio_reference)
-    return " ".join(segment.text.strip() for segment in segments).strip()
+    with _local_path_for(audio_reference) as local_path:
+        # "tiny" is the smallest/fastest model size -- appropriate for a
+        # local, best-effort karaoke/lyrics tool rather than a production
+        # transcription service.
+        model = WhisperModel("tiny")
+        segments, _info = model.transcribe(local_path)
+        return " ".join(segment.text.strip() for segment in segments).strip()
 
 
 def transcribe(

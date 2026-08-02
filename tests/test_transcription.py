@@ -1,3 +1,5 @@
+import os
+
 import transcription
 
 
@@ -78,3 +80,68 @@ def test_empty_transcription_result_is_treated_as_unavailable():
     assert result.available is False
     assert result.text is None
     assert result.reason
+
+
+def test_local_path_for_local_reference_is_passed_through_unchanged():
+    with transcription._local_path_for("data/samples/tone_a.wav") as local_path:
+        assert local_path == "data/samples/tone_a.wav"
+
+
+def test_local_path_for_url_downloads_and_cleans_up_temp_file(monkeypatch):
+    captured = {}
+
+    def fake_urlretrieve(url, tmp_path):
+        captured["path"] = tmp_path
+        with open(tmp_path, "wb") as f:
+            f.write(b"fake audio bytes")
+
+    monkeypatch.setattr(transcription, "urlretrieve", fake_urlretrieve)
+
+    with transcription._local_path_for("https://example.com/clip.ogg") as local_path:
+        assert local_path == captured["path"]
+        assert local_path.endswith(".ogg")
+        assert os.path.exists(local_path)
+
+    # Temp file must be cleaned up after the context manager exits, success
+    # or failure.
+    assert not os.path.exists(captured["path"])
+
+
+def test_local_path_for_url_cleans_up_temp_file_on_download_failure(monkeypatch):
+    captured = {}
+
+    def fake_urlretrieve_that_fails(url, tmp_path):
+        captured["path"] = tmp_path
+        raise OSError("network error: timed out")
+
+    monkeypatch.setattr(transcription, "urlretrieve", fake_urlretrieve_that_fails)
+
+    raised = False
+    try:
+        with transcription._local_path_for("https://example.com/clip.mp3") as _local_path:
+            pass
+    except OSError:
+        raised = True
+
+    assert raised
+    assert not os.path.exists(captured["path"])
+
+
+def test_transcribe_surfaces_url_download_failure_as_isolated_unavailable(monkeypatch):
+    def fake_urlretrieve_that_fails(url, tmp_path):
+        raise OSError("network error: timed out")
+
+    monkeypatch.setattr(transcription, "urlretrieve", fake_urlretrieve_that_fails)
+
+    song = {"title": "Archive Song", "artist": "Someone"}
+    result = transcription.transcribe(
+        song, "https://example.com/clip.mp3", model_loader=transcription._load_and_transcribe
+    )
+
+    # _load_and_transcribe will fail either on the faster_whisper import (if
+    # not installed) or on the download (patched to fail here) -- either way
+    # it must surface through transcribe()'s single existing catch point as
+    # an isolated unavailable result, never an exception.
+    assert result.available is False
+    assert result.text is None
+    assert isinstance(result.reason, str) and len(result.reason) > 0

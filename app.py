@@ -2,6 +2,7 @@ import streamlit as st
 
 import agent
 import audio_source
+import cc0_library
 import ratings
 import retrieval
 import storage
@@ -305,6 +306,46 @@ def add_song_sidebar():
             all_songs.append(normalized)
             st.session_state.songs = all_songs
             storage.save_json(LIBRARY_PATH, all_songs)
+
+
+def import_cc0_sidebar():
+    """Render a one-click importer for the curated CC0 track list.
+
+    Addresses "add songs from the internet without pasting one URL at a
+    time": imports a small fixed list of real Wikimedia Commons
+    public-domain classical recordings (not synthetic tones) in one click.
+    Idempotent -- already-imported tracks (matched by ratings.song_key,
+    the same title+artist composite key used everywhere else) are skipped,
+    so clicking twice never duplicates.
+    """
+    st.sidebar.header("Import CC0 tracks")
+    st.sidebar.caption(
+        "Real public-domain classical recordings from Wikimedia Commons "
+        "(not the synthetic sample tones). Instrumental only -- Transcribe "
+        "will legitimately return no lyrics for these."
+    )
+
+    if st.sidebar.button("Import curated public-domain library"):
+        existing_keys = {ratings.song_key(s) for s in st.session_state.songs}
+
+        # Build the full new list in a local variable first, only assigning
+        # to session_state once it's complete -- a partially-built import
+        # can never leave session_state in a half-updated state.
+        all_songs = st.session_state.songs[:]
+        added = 0
+        skipped = 0
+        for candidate in cc0_library.normalized_cc0_tracks():
+            if ratings.song_key(candidate) in existing_keys:
+                skipped += 1
+                continue
+            all_songs.append(candidate)
+            existing_keys.add(ratings.song_key(candidate))
+            added += 1
+
+        if added:
+            st.session_state.songs = all_songs
+            storage.save_json(LIBRARY_PATH, all_songs)
+        st.sidebar.success(f"Imported {added} new track(s), skipped {skipped} already in library.")
 
 
 def playlist_tabs(playlists):
@@ -628,6 +669,7 @@ def main():
     init_state()
     profile_sidebar()
     add_song_sidebar()
+    import_cc0_sidebar()
     clear_controls()
 
     profile = st.session_state.profile
