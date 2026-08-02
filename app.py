@@ -861,10 +861,26 @@ def main():
     # Thin closures so each st.Page callable takes no args while still
     # seeing the playlists computed once per run above.
     pages = [
-        st.Page(lambda: library_page(merged_playlists), title="Library", icon="🎵", default=True),
-        st.Page(lambda: discover_page(merged_playlists), title="Discover", icon="🔮"),
-        st.Page(add_music_page, title="Add Music", icon="➕"),
-        st.Page(lambda: insights_page(merged_playlists), title="Insights", icon="📊"),
+        st.Page(
+            lambda: library_page(merged_playlists),
+            title="Library",
+            icon="🎵",
+            url_path="library",
+            default=True,
+        ),
+        st.Page(
+            lambda: discover_page(merged_playlists),
+            title="Discover",
+            icon="🔮",
+            url_path="discover",
+        ),
+        st.Page(add_music_page, title="Add Music", icon="➕", url_path="add-music"),
+        st.Page(
+            lambda: insights_page(merged_playlists),
+            title="Insights",
+            icon="📊",
+            url_path="insights",
+        ),
     ]
     nav = st.navigation(pages)
 
