@@ -279,68 +279,70 @@ def default_songs():
 
 
 def profile_sidebar():
-    """Render and update the user profile."""
-    st.sidebar.header("Mood profile")
+    """Render and update the user profile, tucked in a sidebar expander.
 
-    profile = st.session_state.profile
+    Content is identical to before; only the container changed (plain
+    stacked sidebar widgets -> a collapsed-by-default expander) so the
+    global sidebar isn't a wall of unlabeled controls.
+    """
+    with st.sidebar.expander("Profile & settings", expanded=False):
+        profile = st.session_state.profile
 
-    profile["name"] = st.sidebar.text_input(
-        "Profile name",
-        value=str(profile.get("name", "")),
-    )
-
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        profile["hype_min_energy"] = st.sidebar.slider(
-            "Hype min energy",
-            min_value=1,
-            max_value=10,
-            value=int(profile.get("hype_min_energy", 7)),
-        )
-    with col2:
-        profile["chill_max_energy"] = st.sidebar.slider(
-            "Chill max energy",
-            min_value=1,
-            max_value=10,
-            value=int(profile.get("chill_max_energy", 3)),
+        profile["name"] = st.text_input(
+            "Profile name",
+            value=str(profile.get("name", "")),
         )
 
-    profile["favorite_genre"] = st.sidebar.selectbox(
-        "Favorite genre",
-        options=["rock", "lofi", "pop", "jazz", "electronic", "ambient", "other"],
-        index=0,
-    )
+        col1, col2 = st.columns(2)
+        with col1:
+            profile["hype_min_energy"] = st.slider(
+                "Hype min energy",
+                min_value=1,
+                max_value=10,
+                value=int(profile.get("hype_min_energy", 7)),
+            )
+        with col2:
+            profile["chill_max_energy"] = st.slider(
+                "Chill max energy",
+                min_value=1,
+                max_value=10,
+                value=int(profile.get("chill_max_energy", 3)),
+            )
 
-    profile["include_mixed"] = st.sidebar.checkbox(
-        "Include Mixed playlist in views",
-        value=bool(profile.get("include_mixed", True)),
-    )
+        profile["favorite_genre"] = st.selectbox(
+            "Favorite genre",
+            options=["rock", "lofi", "pop", "jazz", "electronic", "ambient", "other"],
+            index=0,
+        )
 
-    st.sidebar.write("Current profile:", profile["name"])
+        profile["include_mixed"] = st.checkbox(
+            "Include Mixed playlist in views",
+            value=bool(profile.get("include_mixed", True)),
+        )
+
+        st.caption(f"Current profile: {profile['name']}")
 
 
-def add_song_sidebar():
-    """Render the Add Song controls in the sidebar."""
-    st.sidebar.header("Add a song")
-
-    title = st.sidebar.text_input("Title")
-    artist = st.sidebar.text_input("Artist")
-    genre = st.sidebar.selectbox(
+def add_song_form():
+    """Render the manual Add Song form (main content, not sidebar)."""
+    title = st.text_input("Title")
+    artist = st.text_input("Artist")
+    genre = st.selectbox(
         "Genre",
         options=["rock", "lofi", "pop", "jazz", "electronic", "ambient", "other"],
     )
-    energy = st.sidebar.slider("Energy", min_value=1, max_value=10, value=5)
-    tags_text = st.sidebar.text_input("Tags (comma separated)")
+    energy = st.slider("Energy", min_value=1, max_value=10, value=5)
+    tags_text = st.text_input("Tags (comma separated)")
 
-    audio_choice = st.sidebar.radio(
+    audio_choice = st.radio(
         "Audio source",
         options=["Local sample (round-robin)", "Archive URL"],
     )
     archive_url = ""
     if audio_choice == "Archive URL":
-        archive_url = st.sidebar.text_input("Archive URL (direct link to .wav/.mp3/.ogg)")
+        archive_url = st.text_input("Archive URL (direct link to .wav/.mp3/.ogg)")
 
-    if st.sidebar.button("Add to playlist"):
+    if st.button("Add to playlist"):
         raw_tags = [t.strip() for t in tags_text.split(",")]
         tags = [t for t in raw_tags if t]
 
@@ -365,9 +367,10 @@ def add_song_sidebar():
             all_songs.append(normalized)
             st.session_state.songs = all_songs
             storage.save_json(LIBRARY_PATH, all_songs)
+            st.success(f"Added {title} by {artist}.")
 
 
-def import_cc0_sidebar():
+def import_cc0_form():
     """Render a one-click importer for the curated CC0 track list.
 
     Addresses "add songs from the internet without pasting one URL at a
@@ -377,14 +380,13 @@ def import_cc0_sidebar():
     the same title+artist composite key used everywhere else) are skipped,
     so clicking twice never duplicates.
     """
-    st.sidebar.header("Import CC0 tracks")
-    st.sidebar.caption(
+    st.caption(
         "Real public-domain classical recordings from Wikimedia Commons "
         "(not the synthetic sample tones). Instrumental only -- Transcribe "
         "will legitimately return no lyrics for these."
     )
 
-    if st.sidebar.button("Import curated public-domain library"):
+    if st.button("Import curated public-domain library"):
         with st.spinner("Importing curated tracks..."):
             existing_keys = {ratings.song_key(s) for s in st.session_state.songs}
 
@@ -405,30 +407,29 @@ def import_cc0_sidebar():
             if added:
                 st.session_state.songs = all_songs
                 storage.save_json(LIBRARY_PATH, all_songs)
-        st.sidebar.success(f"Imported {added} new track(s), skipped {skipped} already in library.")
+        st.success(f"Imported {added} new track(s), skipped {skipped} already in library.")
 
 
-def import_local_folder_sidebar():
-    """Render a sidebar section for bulk-importing local audio files.
+def import_local_folder_form():
+    """Render a section for bulk-importing local audio files.
 
     Scans a user-supplied folder path (recursively) for supported audio
     files via scan_local_folder(), dedupes against the existing library by
-    ratings.song_key (same idempotency pattern as import_cc0_sidebar), and
+    ratings.song_key (same idempotency pattern as import_cc0_form), and
     persists additions.
     """
-    st.sidebar.header("Import local folder")
-    folder_path = st.sidebar.text_input("Folder path", key="local_folder_path")
+    folder_path = st.text_input("Folder path", key="local_folder_path")
 
-    if st.sidebar.button("Scan folder"):
+    if st.button("Scan folder"):
         if not folder_path or not os.path.isdir(folder_path):
-            st.sidebar.error(f"Folder not found: {folder_path}")
+            st.error(f"Folder not found: {folder_path}")
             return
 
         with st.spinner("Scanning folder..."):
             candidates = scan_local_folder(folder_path)
 
             if not candidates:
-                st.sidebar.warning("No supported audio files found in that folder.")
+                st.warning("No supported audio files found in that folder.")
                 return
 
             existing_keys = {ratings.song_key(s) for s in st.session_state.songs}
@@ -446,14 +447,14 @@ def import_local_folder_sidebar():
             if added:
                 st.session_state.songs = all_songs
                 storage.save_json(LIBRARY_PATH, all_songs)
-        st.sidebar.success(f"Imported {added} new track(s), skipped {skipped} already in library.")
+        st.success(f"Imported {added} new track(s), skipped {skipped} already in library.")
 
 
 def playlist_tabs(playlists):
-    """Render playlists in tabs."""
+    """Render playlists in tabs, with a leading Recently Added tab."""
     include_mixed = st.session_state.profile.get("include_mixed", True)
 
-    tab_labels = ["Hype", "Chill"]
+    tab_labels = ["Recently Added", "Hype", "Chill"]
     if include_mixed:
         tab_labels.append("Mixed")
 
@@ -461,7 +462,10 @@ def playlist_tabs(playlists):
 
     for label, tab in zip(tab_labels, tabs):
         with tab:
-            render_playlist(label, playlists.get(label, []))
+            if label == "Recently Added":
+                recently_added_section()
+            else:
+                render_playlist(label, playlists.get(label, []))
 
 
 def render_playlist(label, songs):
@@ -511,48 +515,66 @@ def render_playlist(label, songs):
         render_song(label, song)
 
 
+# Mood -> st.badge color. Hype is warm, Chill is cool, Mixed is neutral --
+# same color language used nowhere else, purely a display affordance.
+MOOD_BADGE_COLORS = {"Hype": "orange", "Chill": "blue", "Mixed": "violet"}
+
+
 def render_song(label, song):
-    """Render one song's display line, audio player, transcribe/rate/remove
-    controls. Shared by render_playlist() and recently_added_section() so
+    """Render one song as a bordered card: title/artist, mood/genre/energy
+    chips, audio player, rating slider, and Transcribe/Remove tucked into a
+    popover. Shared by render_playlist() and recently_added_section() so
     the audio-guard/rating markup isn't duplicated between them.
     """
     mood = song.get("mood", "?")
     tags = ", ".join(song.get("tags", []))
-    st.write(
-        f"- **{song['title']}** by {song['artist']} "
-        f"(genre {song['genre']}, energy {song['energy']}, mood {mood}) "
-        f"[{tags}]"
-    )
 
-    result = audio_source.resolve(song)
-    if result.playable:
-        st.audio(result.reference)
-    else:
-        st.caption(f"Playback unavailable: {result.reason}")
+    with st.container(border=True):
+        title_col, chip_col = st.columns([3, 2])
+        with title_col:
+            st.markdown(f"**{song['title']}**")
+            st.caption(song["artist"])
+        with chip_col:
+            b1, b2, b3 = st.columns(3)
+            with b1:
+                st.badge(mood, color=MOOD_BADGE_COLORS.get(mood, "gray"))
+            with b2:
+                st.badge(str(song.get("genre", "?")), color="gray")
+            with b3:
+                st.badge(f"⚡{song.get('energy', '?')}", color="gray")
+        if tags:
+            st.caption(f"Tags: {tags}")
 
-    transcribe_song_widget(label, song, result.reference)
-
-    current_rating = ratings.get_rating(song)
-    widget_key = f"rating_{label}_{ratings.song_key(song)}"
-    chosen = st.select_slider(
-        "Your rating",
-        options=STAR_OPTIONS,
-        value=_stars_to_option(current_rating),
-        key=widget_key,
-    )
-    chosen_stars = _option_to_stars(chosen)
-    if chosen_stars != current_rating:
-        if chosen_stars is None:
-            ratings.clear_rating(song)
+        result = audio_source.resolve(song)
+        if result.playable:
+            st.audio(result.reference)
         else:
-            ratings.rate_song(song, chosen_stars)
+            st.caption(f"Playback unavailable: {result.reason}")
 
-    remove_key = f"remove_{label}_{song['title']}_{song['artist']}"
-    if st.button("Remove", key=remove_key):
-        st.session_state.songs = remove_song_from_library(st.session_state.songs, song)
-        ratings.clear_rating(song)
-        storage.save_json(LIBRARY_PATH, st.session_state.songs)
-        st.rerun()
+        current_rating = ratings.get_rating(song)
+        widget_key = f"rating_{label}_{ratings.song_key(song)}"
+        chosen = st.select_slider(
+            "Your rating",
+            options=STAR_OPTIONS,
+            value=_stars_to_option(current_rating),
+            key=widget_key,
+        )
+        chosen_stars = _option_to_stars(chosen)
+        if chosen_stars != current_rating:
+            if chosen_stars is None:
+                ratings.clear_rating(song)
+            else:
+                ratings.rate_song(song, chosen_stars)
+
+        with st.popover("Actions"):
+            transcribe_song_widget(label, song, result.reference)
+            st.divider()
+            remove_key = f"remove_{label}_{song['title']}_{song['artist']}"
+            if st.button("Remove", key=remove_key):
+                st.session_state.songs = remove_song_from_library(st.session_state.songs, song)
+                ratings.clear_rating(song)
+                storage.save_json(LIBRARY_PATH, st.session_state.songs)
+                st.rerun()
 
 
 def transcribe_song_widget(label, song, audio_reference):
@@ -776,49 +798,80 @@ def history_section():
 
 
 def clear_controls():
-    """Render a small section for clearing data."""
-    st.sidebar.header("Manage data")
-    if st.sidebar.button("Reset songs to default"):
-        st.session_state.songs = default_songs()
-    if st.sidebar.button("Clear history"):
-        st.session_state.history = []
+    """Render the destructive reset/clear controls, tucked in a sidebar
+    expander (collapsed by default -- these actions are one click and
+    irreversible, so they shouldn't sit next to everyday widgets).
+    """
+    with st.sidebar.expander("Danger zone", expanded=False):
+        if st.button("Reset songs to default"):
+            st.session_state.songs = default_songs()
+        if st.button("Clear history"):
+            st.session_state.history = []
+
+
+def library_page(playlists):
+    """Library page: mood tabs (Recently Added / Hype / Chill / Mixed)."""
+    st.title("🎵 Library")
+    playlist_tabs(playlists)
+
+
+def discover_page(playlists):
+    """Discover page: the three "find something to listen to" AI features,
+    as sub-tabs so they don't stack vertically across a whole page.
+    """
+    st.title("🔮 Discover")
+    tab1, tab2, tab3 = st.tabs(["Lucky Pick", "Smart Recommend", "VibeQuery"])
+    with tab1:
+        lucky_section(playlists)
+    with tab2:
+        smart_recommend_section()
+    with tab3:
+        vibe_query_section()
+
+
+def add_music_page():
+    """Add Music page: manual add / CC0 import / local folder import."""
+    st.title("➕ Add Music")
+    tab1, tab2, tab3 = st.tabs(["Manual Add", "Import CC0", "Import Local Folder"])
+    with tab1:
+        add_song_form()
+    with tab2:
+        import_cc0_form()
+    with tab3:
+        import_local_folder_form()
+
+
+def insights_page(playlists):
+    """Insights page: playlist stats + pick history."""
+    st.title("📊 Insights")
+    stats_section(playlists)
+    st.divider()
+    history_section()
 
 
 def main():
-    st.set_page_config(page_title="Playlist Chaos", layout="wide")
-    st.title("Playlist Chaos")
-
-    st.write(
-        "An AI assistant tried to build a smart playlist engine. "
-        "The code runs, but the behavior is a bit unpredictable."
-    )
+    st.set_page_config(page_title="Playlist Chaos", page_icon="🎧", layout="wide")
 
     init_state()
-    profile_sidebar()
-    add_song_sidebar()
-    import_cc0_sidebar()
-    import_local_folder_sidebar()
-    clear_controls()
 
     profile = st.session_state.profile
     songs = st.session_state.songs
+    merged_playlists = merge_playlists(build_playlists(songs, profile), {})
 
-    base_playlists = build_playlists(songs, profile)
-    merged_playlists = merge_playlists(base_playlists, {})
+    # Thin closures so each st.Page callable takes no args while still
+    # seeing the playlists computed once per run above.
+    pages = [
+        st.Page(lambda: library_page(merged_playlists), title="Library", icon="🎵", default=True),
+        st.Page(lambda: discover_page(merged_playlists), title="Discover", icon="🔮"),
+        st.Page(add_music_page, title="Add Music", icon="➕"),
+        st.Page(lambda: insights_page(merged_playlists), title="Insights", icon="📊"),
+    ]
+    nav = st.navigation(pages)
 
-    playlist_tabs(merged_playlists)
-    st.divider()
-    recently_added_section()
-    st.divider()
-    lucky_section(merged_playlists)
-    st.divider()
-    smart_recommend_section()
-    st.divider()
-    vibe_query_section()
-    st.divider()
-    stats_section(merged_playlists)
-    st.divider()
-    history_section()
+    profile_sidebar()
+    clear_controls()
+
+    nav.run()
 
 
 if __name__ == "__main__":
